@@ -1,0 +1,33 @@
+-- ============================================
+-- INSERT DUMMY NOTIFICATIONS FOR TESTING
+-- Execute this in pgAdmin Query Tool
+-- ============================================
+
+-- Clear existing notifications (optional, remove comment to use)
+-- DELETE FROM notifications;
+
+-- Insert dummy notifications for user USR-001
+INSERT INTO notifications (id, user_id, title, message, type, is_read, link, created_at) VALUES
+-- Unread notifications (recent)
+('NOTIF-001', 'USR-001', 'Pesanan Baru Diterima', 'Pesanan Anda #ORD-001 telah diterima dan sedang diproses.', 'success', false, '/layanan', NOW() - INTERVAL '1 hour'),
+('NOTIF-002', 'USR-001', 'Batch Sorting Selesai', 'Batch #1 dari pesanan Anda telah selesai disortir dengan akurasi 95.2%.', 'info', false, '/riwayat', NOW() - INTERVAL '3 hours'),
+('NOTIF-003', 'USR-001', 'Pembayaran Berhasil', 'Pembayaran untuk pesanan #ORD-002 sebesar Rp 150.000 telah dikonfirmasi.', 'success', false, '/layanan', NOW() - INTERVAL '5 hours'),
+
+-- Read notifications (older)
+('NOTIF-004', 'USR-001', 'Proses Sortir Dimulai', 'Tim kami telah memulai proses sortir untuk pesanan #ORD-001.', 'info', true, '/layanan', NOW() - INTERVAL '1 day'),
+('NOTIF-005', 'USR-001', 'Hasil Sortir Tersedia', 'Hasil sortir untuk Batch #2 sudah tersedia. Total biji: 10,500.', 'info', true, '/riwayat', NOW() - INTERVAL '2 days'),
+('NOTIF-006', 'USR-001', 'Pengumuman Penting', 'Sistem akan maintenance pada tanggal 25 Nov 2025, 00:00-02:00 WIB.', 'warning', true, NULL, NOW() - INTERVAL '3 days'),
+('NOTIF-007', 'USR-001', 'Profil Diperbarui', 'Profil Anda telah berhasil diperbarui.', 'success', true, '/dashboard', NOW() - INTERVAL '4 days'),
+('NOTIF-008', 'USR-001', 'Thread Forum Baru', 'Ada balasan baru di thread "Tips Sortir Kopi Berkualitas".', 'info', true, '/forum', NOW() - INTERVAL '5 days'),
+('NOTIF-009', 'USR-001', 'Laporan Bulanan Tersedia', 'Laporan statistik sortir bulan November telah tersedia untuk diunduh.', 'info', true, '/dashboard', NOW() - INTERVAL '6 days'),
+('NOTIF-010', 'USR-001', 'Selamat Datang!', 'Terima kasih telah bergabung dengan PiKopi. Mulai sortir kopi Anda sekarang!', 'success', true, '/layanan', NOW() - INTERVAL '7 days');
+
+-- Verify inserted notifications
+SELECT COUNT(*) as total_notifications FROM notifications WHERE user_id = 'USR-001';
+SELECT COUNT(*) as unread_notifications FROM notifications WHERE user_id = 'USR-001' AND is_read = false;
+
+-- View all notifications for USR-001
+SELECT id, title, type, is_read, created_at 
+FROM notifications 
+WHERE user_id = 'USR-001' 
+ORDER BY created_at DESC;
