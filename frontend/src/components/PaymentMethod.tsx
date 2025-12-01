@@ -8,7 +8,9 @@ import { AlertDialog, AlertDialogAction, AlertDialogContent, AlertDialogDescript
 import { RadioGroup, RadioGroupItem } from './ui/radio-group';
 import { Upload, Copy, Check, ArrowLeft, AlertCircle, CreditCard, Wallet, Building2 } from 'lucide-react';
 import { motion } from 'motion/react';
-import { orderAPI } from '../services/api'; 
+import { orderAPI } from '../services/api';
+import { uploadPaymentProof } from '../services/supabase'; // ✅ Import helper function
+
 
 interface Order {
   id: string;
@@ -20,6 +22,7 @@ interface Order {
   paymentStatus?: string;
   createdAt: string;
 }
+
 
 interface Payment {
   id: string;
@@ -35,11 +38,13 @@ interface Payment {
   rejectionReason?: string;
 }
 
+
 interface PaymentMethodProps {
   orderId: string;
   orderData?: Order;
   onBack: () => void;
 }
+
 
 const paymentMethods = [
   {
@@ -62,22 +67,27 @@ const paymentMethods = [
   }
 ];
 
+
 export default function PaymentMethod({ orderId, orderData, onBack }: PaymentMethodProps) {
   const [order, setOrder] = useState<Order | null>(null);
   const [selectedMethod, setSelectedMethod] = useState('');
   const [accountName, setAccountName] = useState('');
   const [proofImage, setProofImage] = useState<string>('');
+  const [proofImageFile, setProofImageFile] = useState<File | null>(null);
   const [fileName, setFileName] = useState('');
   const [notes, setNotes] = useState('');
   const [copiedAccount, setCopiedAccount] = useState('');
   const [showSuccess, setShowSuccess] = useState(false);
   const [existingPayment, setExistingPayment] = useState<Payment | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false); // ✅ Loading state
-  const [error, setError] = useState(''); // ✅ Error state
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState('');
+  const [uploadProgress, setUploadProgress] = useState(0);
+
 
   useEffect(() => {
     console.log('💳 PaymentMethod mounted with orderId:', orderId);
     console.log('📦 Order data from props:', orderData);
+
 
     if (orderData) {
       console.log('✅ Using order data from props');
@@ -86,23 +96,24 @@ export default function PaymentMethod({ orderId, orderData, onBack }: PaymentMet
       console.log('⚠️ No order data from props, searching localStorage...');
       let orders = JSON.parse(localStorage.getItem('userOrders') || '[]');
       let foundOrder = orders.find((o: Order) => o.id === orderId);
-      
+
       if (foundOrder) {
         console.log('✅ Found order in userOrders:', foundOrder);
       } else {
         console.log('❌ Not found in userOrders, trying pilahkopi_orders...');
         orders = JSON.parse(localStorage.getItem('pilahkopi_orders') || '[]');
         foundOrder = orders.find((o: Order) => o.id === orderId);
-        
+
         if (foundOrder) {
           console.log('✅ Found order in pilahkopi_orders:', foundOrder);
         } else {
           console.error('❌ Order not found in any localStorage key!');
         }
       }
-      
+
       setOrder(foundOrder || null);
     }
+
 
     // Check existing payment dari localStorage (temporary)
     const payments = JSON.parse(localStorage.getItem('pilahkopi_payments') || '[]');
@@ -117,6 +128,7 @@ export default function PaymentMethod({ orderId, orderData, onBack }: PaymentMet
     }
   }, [orderId, orderData]);
 
+
   const getMethodDetails = () => {
     for (const category of paymentMethods) {
       const method = category.methods.find(m => m.id === selectedMethod);
@@ -125,78 +137,113 @@ export default function PaymentMethod({ orderId, orderData, onBack }: PaymentMet
     return null;
   };
 
+
   const handleCopyAccount = (accountNumber: string) => {
     navigator.clipboard.writeText(accountNumber);
     setCopiedAccount(accountNumber);
     setTimeout(() => setCopiedAccount(''), 2000);
   };
 
+
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      // Check file size (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        setError('Ukuran file terlalu besar. Maksimal 5MB');
+        return;
+      }
+
       setFileName(file.name);
+      setProofImageFile(file);
+
+      // Show preview
       const reader = new FileReader();
       reader.onloadend = () => {
         setProofImage(reader.result as string);
       };
       reader.readAsDataURL(file);
+      setError('');
     }
   };
 
-  // ✅ UPDATED: Kirim pembayaran ke backend API
+
+  // ✅ UPDATED: Gunakan helper function dari supabase.ts
   const handleSubmit = async () => {
-    if (!selectedMethod || !accountName || !proofImage || !order) return;
+    if (!selectedMethod || !accountName || !proofImage || !order || !proofImageFile) return;
+
 
     const methodDetails = getMethodDetails();
     if (!methodDetails) return;
 
+
     setIsSubmitting(true);
     setError('');
+    setUploadProgress(0);
 
-    // Data pembayaran untuk dikirim ke backend
-    const paymentData = {
-      orderId: order.id,
-      method: `${methodDetails.name} - ${methodDetails.accountNumber}`,
-      accountName,
-      amount: order.price,
-      proofImage,
-      notes: notes || null,
-    };
-
-    console.log('💾 Sending payment to backend:', paymentData);
 
     try {
-      // ✅ Kirim ke backend API
+      // ✅ Step 1: Upload file ke Supabase menggunakan helper function
+      console.log('📸 Step 1: Uploading file to Supabase...');
+      setUploadProgress(30);
+
+      const supabaseUrl = await uploadPaymentProof(proofImageFile, order.id);
+
+      if (!supabaseUrl) {
+        throw new Error('Gagal mendapatkan URL foto dari Supabase');
+      }
+
+      console.log('✅ Supabase upload successful:', supabaseUrl);
+      setUploadProgress(60);
+
+
+      // ✅ Step 2: Kirim data pembayaran ke backend
+      console.log('💾 Step 2: Sending payment data to backend...');
+
+      const paymentData = {
+        orderId: order.id,
+        method: `${methodDetails.name} - ${methodDetails.accountNumber}`,
+        accountName,
+        amount: order.price,
+        proofImage: supabaseUrl, // ✅ URL dari Supabase
+        notes: notes || null,
+      };
+
+      console.log('📤 Sending to backend:', paymentData);
+
       const response = await orderAPI.createPayment(paymentData);
 
       console.log('✅ Backend response:', response);
 
+      setUploadProgress(80);
+
+
       if (response.success) {
-        // Simpan juga ke localStorage sebagai backup (optional)
+        // Simpan juga ke localStorage sebagai backup
         const payment: Payment = {
-          id: response.data.id,
+          id: response.data?.id || `PAY-${Date.now()}`,
           orderId: order.id,
           method: paymentData.method,
           accountName: paymentData.accountName,
           amount: paymentData.amount,
-          proofImage: paymentData.proofImage,
+          proofImage: supabaseUrl,
           status: 'pending',
-          uploadedAt: response.data.uploadedAt || new Date().toISOString(),
+          uploadedAt: response.data?.uploadedAt || new Date().toISOString(),
           notes: paymentData.notes || undefined,
         };
 
         const payments = JSON.parse(localStorage.getItem('pilahkopi_payments') || '[]');
         const existingIndex = payments.findIndex((p: Payment) => p.orderId === orderId);
-        
+
         if (existingIndex !== -1) {
           payments[existingIndex] = payment;
         } else {
           payments.push(payment);
         }
-        
+
         localStorage.setItem('pilahkopi_payments', JSON.stringify(payments));
 
-        // Update order payment status di localStorage
+        // Update order payment status
         ['userOrders', 'pilahkopi_orders'].forEach(key => {
           const orders = JSON.parse(localStorage.getItem(key) || '[]');
           const orderIndex = orders.findIndex((o: Order) => o.id === orderId);
@@ -206,7 +253,10 @@ export default function PaymentMethod({ orderId, orderData, onBack }: PaymentMet
           }
         });
 
-        setShowSuccess(true);
+        setUploadProgress(100);
+        setTimeout(() => {
+          setShowSuccess(true);
+        }, 500);
       } else {
         throw new Error(response.message || 'Gagal mengirim bukti pembayaran');
       }
@@ -215,13 +265,16 @@ export default function PaymentMethod({ orderId, orderData, onBack }: PaymentMet
       setError(err.message || 'Gagal mengirim bukti pembayaran. Silakan coba lagi.');
     } finally {
       setIsSubmitting(false);
+      setUploadProgress(0);
     }
   };
+
 
   const handleSuccessClose = () => {
     setShowSuccess(false);
     onBack();
   };
+
 
   if (!order || typeof order.price !== 'number') {
     return (
@@ -240,6 +293,7 @@ export default function PaymentMethod({ orderId, orderData, onBack }: PaymentMet
       </Card>
     );
   }
+
 
   return (
     <div className="space-y-6">
@@ -262,6 +316,23 @@ export default function PaymentMethod({ orderId, orderData, onBack }: PaymentMet
             </CardContent>
           </Card>
         )}
+
+
+        {/* ✅ Upload Progress Bar */}
+        {isSubmitting && uploadProgress > 0 && (
+          <Card className="mb-6">
+            <CardContent className="p-6">
+              <p className="text-sm font-semibold mb-2">Mengunggah: {uploadProgress}%</p>
+              <div className="w-full bg-gray-200 rounded-full h-2">
+                <div
+                  className="bg-[#56743D] h-2 rounded-full transition-all duration-300"
+                  style={{ width: `${uploadProgress}%` }}
+                />
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
 
         <Card className="border-2 border-[#4B2E05]/20">
           <CardHeader className="bg-gradient-to-r from-[#4B2E05] to-[#56743D] text-white">
@@ -288,6 +359,7 @@ export default function PaymentMethod({ orderId, orderData, onBack }: PaymentMet
           </CardContent>
         </Card>
 
+
         {existingPayment && existingPayment.status === 'verified' && (
           <Card className="border-2 border-green-500">
             <CardContent className="p-6">
@@ -301,6 +373,7 @@ export default function PaymentMethod({ orderId, orderData, onBack }: PaymentMet
             </CardContent>
           </Card>
         )}
+
 
         {existingPayment && existingPayment.status === 'rejected' && (
           <Card className="border-2 border-red-500">
@@ -321,6 +394,7 @@ export default function PaymentMethod({ orderId, orderData, onBack }: PaymentMet
           </Card>
         )}
 
+
         {existingPayment && existingPayment.status === 'pending' && (
           <Card className="border-2 border-yellow-500">
             <CardContent className="p-6">
@@ -334,6 +408,7 @@ export default function PaymentMethod({ orderId, orderData, onBack }: PaymentMet
             </CardContent>
           </Card>
         )}
+
 
         <Card className="border-2 border-[#4B2E05]/20">
           <CardHeader>
@@ -356,11 +431,10 @@ export default function PaymentMethod({ orderId, orderData, onBack }: PaymentMet
                       {category.methods.map((method) => (
                         <div
                           key={method.id}
-                          className={`border-2 rounded-lg p-4 cursor-pointer transition-all ${
-                            selectedMethod === method.id
+                          className={`border-2 rounded-lg p-4 cursor-pointer transition-all ${selectedMethod === method.id
                               ? 'border-[#56743D] bg-[#56743D]/5'
                               : 'border-gray-200 hover:border-[#56743D]/50'
-                          }`}
+                            }`}
                           onClick={() => setSelectedMethod(method.id)}
                         >
                           <div className="flex items-start justify-between">
@@ -402,6 +476,7 @@ export default function PaymentMethod({ orderId, orderData, onBack }: PaymentMet
               })}
             </RadioGroup>
 
+
             {selectedMethod && (
               <motion.div
                 initial={{ opacity: 0, height: 0 }}
@@ -420,6 +495,7 @@ export default function PaymentMethod({ orderId, orderData, onBack }: PaymentMet
                   />
                 </div>
 
+
                 <div>
                   <Label htmlFor="proof">Upload Bukti Pembayaran *</Label>
                   <div className="mt-1">
@@ -433,9 +509,8 @@ export default function PaymentMethod({ orderId, orderData, onBack }: PaymentMet
                     />
                     <Label
                       htmlFor="proof"
-                      className={`flex items-center justify-center gap-2 border-2 border-dashed border-gray-300 rounded-lg p-8 transition-colors ${
-                        isSubmitting ? 'cursor-not-allowed opacity-50' : 'cursor-pointer hover:border-[#56743D]'
-                      }`}
+                      className={`flex items-center justify-center gap-2 border-2 border-dashed border-gray-300 rounded-lg p-8 transition-colors ${isSubmitting ? 'cursor-not-allowed opacity-50' : 'cursor-pointer hover:border-[#56743D]'
+                        }`}
                     >
                       {proofImage ? (
                         <div className="text-center">
@@ -462,6 +537,7 @@ export default function PaymentMethod({ orderId, orderData, onBack }: PaymentMet
                   </div>
                 </div>
 
+
                 <div>
                   <Label htmlFor="notes">Catatan (Opsional)</Label>
                   <Textarea
@@ -474,6 +550,7 @@ export default function PaymentMethod({ orderId, orderData, onBack }: PaymentMet
                     disabled={isSubmitting}
                   />
                 </div>
+
 
                 {/* ✅ Button dengan loading state */}
                 <Button
@@ -496,6 +573,7 @@ export default function PaymentMethod({ orderId, orderData, onBack }: PaymentMet
         </Card>
       </motion.div>
 
+
       <AlertDialog open={showSuccess} onOpenChange={setShowSuccess}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -504,7 +582,7 @@ export default function PaymentMethod({ orderId, orderData, onBack }: PaymentMet
               Bukti Pembayaran Berhasil Dikirim
             </AlertDialogTitle>
             <AlertDialogDescription>
-              Bukti pembayaran Anda telah berhasil dikirim dan sedang menunggu verifikasi dari admin.
+              Bukti pembayaran Anda telah berhasil dikirim ke Supabase dan sedang menunggu verifikasi dari admin.
               Anda akan menerima notifikasi setelah pembayaran diverifikasi.
             </AlertDialogDescription>
           </AlertDialogHeader>
