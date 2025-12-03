@@ -8,7 +8,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogContent, AlertDialogDescript
 import { RadioGroup, RadioGroupItem } from './ui/radio-group';
 import { Upload, Copy, Check, ArrowLeft, AlertCircle, CreditCard, Wallet, Building2 } from 'lucide-react';
 import { motion } from 'motion/react';
-import { orderAPI } from '../services/api';
+import { orderAPI, paymentAPI } from '../services/api';
 import { uploadPaymentProof } from '../services/supabase'; // ✅ Import helper function
 
 
@@ -69,7 +69,7 @@ const paymentMethods = [
 
 
 export default function PaymentMethod({ orderId, orderData, onBack }: PaymentMethodProps) {
-  const [order, setOrder] = useState<Order | null>(null);
+  const [order, setOrder] = useState<Order | null>(orderData || null);
   const [selectedMethod, setSelectedMethod] = useState('');
   const [accountName, setAccountName] = useState('');
   const [proofImage, setProofImage] = useState<string>('');
@@ -88,7 +88,7 @@ export default function PaymentMethod({ orderId, orderData, onBack }: PaymentMet
     console.log('💳 PaymentMethod mounted with orderId:', orderId);
     console.log('📦 Order data from props:', orderData);
 
-
+    // Set order data
     if (orderData) {
       console.log('✅ Using order data from props');
       setOrder(orderData);
@@ -114,18 +114,48 @@ export default function PaymentMethod({ orderId, orderData, onBack }: PaymentMet
       setOrder(foundOrder || null);
     }
 
+    // ✅ Fetch existing payment from backend API
+    const fetchExistingPayment = async () => {
+      try {
+        console.log('🔍 Fetching payment  from backend for order:', orderId);
+        const paymentResponse: any = await paymentAPI.getPaymentByOrder(orderId);
 
-    // Check existing payment dari localStorage (temporary)
-    const payments = JSON.parse(localStorage.getItem('pilahkopi_payments') || '[]');
-    const payment = payments.find((p: Payment) => p.orderId === orderId);
-    if (payment) {
-      console.log('💰 Found existing payment in localStorage:', payment);
-      setExistingPayment(payment);
-      setSelectedMethod(payment.method);
-      setAccountName(payment.accountName);
-      setProofImage(payment.proofImage);
-      setNotes(payment.notes || '');
-    }
+        if (paymentResponse.success && paymentResponse.data) {
+          const payment = paymentResponse.data;
+          console.log('💰 Found existing payment from backend:', payment);
+          setExistingPayment(payment);
+          setSelectedMethod(payment.method);
+          setAccountName(payment.accountName);
+          setProofImage(payment.proofImage);
+          setNotes(payment.notes || '');
+        } else {
+          console.log('🆕 No existing payment found, resetting form');
+          resetForm();
+        }
+      } catch (error: any) {
+        // If 404, it means no payment exists yet - this is normal
+        if (error.message?.includes('not found') || error.message?.includes('404')) {
+          console.log('🆕 No payment found for this order (404), resetting form');
+          resetForm();
+        } else {
+          console.error('❌ Error fetching payment:', error);
+          // On error, still reset to avoid showing stale data
+          resetForm();
+        }
+      }
+    };
+
+    const resetForm = () => {
+      setExistingPayment(null);
+      setSelectedMethod('');
+      setAccountName('');
+      setProofImage('');
+      setNotes('');
+      setProofImageFile(null);
+      setFileName('');
+    };
+
+    fetchExistingPayment();
   }, [orderId, orderData]);
 
 
@@ -274,6 +304,7 @@ export default function PaymentMethod({ orderId, orderData, onBack }: PaymentMet
     setShowSuccess(false);
     onBack();
   };
+
 
 
   if (!order || typeof order.price !== 'number') {

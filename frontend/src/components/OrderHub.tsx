@@ -615,19 +615,19 @@ export default function OrderHub({ userName, userEmail, userPhone, onPayNow }: O
                   <Card
                     key={key}
                     className={`border-2 shadow-lg hover:shadow-xl transition-all relative overflow-hidden ${isActive
-                        ? `${pkg.color} border-current`
-                        : 'border-gray-200'
+                      ? `${pkg.color} border-current`
+                      : 'border-gray-200'
                       }`}
                   >
                     {/* Badge */}
                     <div className="absolute top-0 right-0">
                       <Badge className={`${isActive
-                          ? 'bg-white text-[#4B2E05]'
-                          : pkg.color === 'bg-blue-500'
-                            ? 'bg-blue-100 text-blue-700'
-                            : pkg.color === 'bg-green-500'
-                              ? 'bg-green-100 text-green-700'
-                              : 'bg-orange-100 text-orange-700'
+                        ? 'bg-white text-[#4B2E05]'
+                        : pkg.color === 'bg-blue-500'
+                          ? 'bg-blue-100 text-blue-700'
+                          : pkg.color === 'bg-green-500'
+                            ? 'bg-green-100 text-green-700'
+                            : 'bg-orange-100 text-orange-700'
                         } rounded-tl-none rounded-br-none`}>
                         {pkg.badge}
                       </Badge>
@@ -791,8 +791,8 @@ export default function OrderHub({ userName, userEmail, userPhone, onPayNow }: O
                         value={orderData.kilograms}
                         onChange={handleChange}
                         className={`pl-10 ${orderData.kilograms && currentKg < 5
-                            ? 'border-red-500 focus:ring-red-500'
-                            : ''
+                          ? 'border-red-500 focus:ring-red-500'
+                          : ''
                           }`}
                         placeholder="Minimal 5 kg"
                         required
@@ -866,8 +866,8 @@ export default function OrderHub({ userName, userEmail, userPhone, onPayNow }: O
               {/* Summary Section */}
               <div className="space-y-6">
                 <Card className={`border-0 shadow-lg ${packageInfo
-                    ? `bg-gradient-to-br from-[#4B2E05] to-[#6A4B2E]`
-                    : 'bg-gray-100'
+                  ? `bg-gradient-to-br from-[#4B2E05] to-[#6A4B2E]`
+                  : 'bg-gray-100'
                   } text-white`}>
                   <CardHeader>
                     <CardTitle className={packageInfo ? 'text-white' : 'text-gray-600'}>
@@ -931,8 +931,8 @@ export default function OrderHub({ userName, userEmail, userPhone, onPayNow }: O
                       onClick={handleOrder}
                       disabled={!isFormValid || isCreatingOrder}
                       className={`w-full gap-2 ${isFormValid && !isCreatingOrder
-                          ? 'bg-white text-[#4B2E05] hover:bg-[#F5E6CA]'
-                          : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                        ? 'bg-white text-[#4B2E05] hover:bg-[#F5E6CA]'
+                        : 'bg-gray-300 text-gray-500 cursor-not-allowed'
                         }`}
                     >
                       {isCreatingOrder ? (
@@ -1182,6 +1182,7 @@ export default function OrderHub({ userName, userEmail, userPhone, onPayNow }: O
 
                 {/* Payment form component */}
                 <PaymentMethod
+                  key={selectedOrderForPayment.id}
                   orderId={selectedOrderForPayment.id}
                   orderData={{
                     id: selectedOrderForPayment.id,
