@@ -5,6 +5,7 @@ from app.models.order import Order
 from app.models.user import User
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from datetime import datetime
+from app.utils.notifications import create_notification
 
 
 orders_bp = Blueprint('orders', __name__)
@@ -205,6 +206,18 @@ def update_order_status(order_id):
         
         db.session.commit()
         
+        # ✅ Send notification
+        try:
+            create_notification(
+                user_id=order.user_id,
+                title='Update Status Pesanan',
+                message=f'Status pesanan {order.id} telah diperbarui menjadi {order.status}.',
+                notification_type='info',
+                link='/pesanan'
+            )
+        except Exception as notif_error:
+            print(f"Failed to send notification: {notif_error}")
+
         return jsonify({
             'success': True,
             'message': 'Order status updated successfully',
@@ -217,6 +230,10 @@ def update_order_status(order_id):
             'success': False,
             'message': f'Failed to update order: {str(e)}'
         }), 500
+
+# Import at top of file needed? No, I can import inside function or add to top.
+# Let's add import at the top first in a separate call or just do it here if I can match the top.
+# Wait, I should add the import first.
 
 # Tambahkan endpoint baru di akhir file
 

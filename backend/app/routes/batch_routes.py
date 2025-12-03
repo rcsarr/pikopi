@@ -225,13 +225,15 @@ def update_batch(batch_id):
     except Exception as e:
         db.session.rollback()
         return jsonify({'success': False, 'message': str(e)}), 500
-
+        
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
 
 @batch_bp.route('/batches/<batch_id>/complete', methods=['POST'])
 @jwt_required()
 def complete_batch(batch_id):
     try:
-        batch = Batch.query.get(batch_id)
+        batch = SortingBatch.query.get(batch_id)
         if not batch:
             return jsonify({'success': False, 'message': 'Batch not found'}), 404
         
@@ -241,20 +243,25 @@ def complete_batch(batch_id):
         db.session.commit()
         
         # ✅ Send notification to batch owner
-        create_notification(
-            user_id=batch.user_id,
-            notification_type='batch_completed',
-            title='Sortir Selesai',
-            message=f'Batch {batch_id} telah selesai disortir. Total: {batch.total_beans or 0} biji kopi.',
-            data={
-                'batch_id': batch_id,
-                'total_beans': batch.total_beans,
-                'grade_a': batch.grade_a or 0,
-                'grade_b': batch.grade_b or 0,
-                'grade_c': batch.grade_c or 0,
-                'defect': batch.defect or 0
-            }
-        )
+        # Access user_id through the relationship to Order
+        try:
+            user_id = batch.order.user_id
+            create_notification(
+                user_id=user_id,
+                notification_type='batch_completed',
+                title='Sortir Selesai',
+                message=f'Batch {batch_id} telah selesai disortir. Total: {batch.total_beans or 0} biji kopi.',
+                data={
+                    'batch_id': batch_id,
+                    'total_beans': batch.total_beans,
+                    'healthy_beans': batch.healthy_beans or 0,
+                    'defective_beans': batch.defective_beans or 0,
+                    'accuracy': batch.accuracy or 0
+                },
+                link='/riwayat'
+            )
+        except Exception as notif_error:
+            print(f"Failed to send notification: {notif_error}")
         
         return jsonify({
             'success': True,
@@ -264,4 +271,3 @@ def complete_batch(batch_id):
     except Exception as e:
         db.session.rollback()
         print(f"Error completing batch: {e}")
-        return jsonify({'success': False, 'message': str(e)}), 500

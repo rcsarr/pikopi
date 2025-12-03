@@ -131,7 +131,8 @@ if __name__ == '__main__':
     print(f"")
     
     # Start scheduler
-    scheduler = start_scheduler()
+    # scheduler = start_scheduler()
+    scheduler = None
     
     # Disable reloader untuk stabilitas port
     try:

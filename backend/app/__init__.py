@@ -84,7 +84,7 @@ def create_app(config_name='development'):
             response = make_response()
             response.headers.add("Access-Control-Allow-Origin", request.headers.get("Origin", "*"))
             response.headers.add("Access-Control-Allow-Headers", "Content-Type,Authorization,Cache-Control,Pragma,Expires,X-Requested-With")
-            response.headers.add("Access-Control-Allow-Methods", "GET,PUT,POST,DELETE,OPTIONS")
+            response.headers.add("Access-Control-Allow-Methods", "GET,PUT,POST,PATCH,DELETE,OPTIONS")
             response.headers.add("Access-Control-Allow-Credentials", "true")
             return response, 200
 

@@ -202,7 +202,7 @@ export default function PaymentMethod({ orderId, orderData, onBack }: PaymentMet
 
       const paymentData = {
         orderId: order.id,
-        method: `${methodDetails.name} - ${methodDetails.accountNumber}`,
+        method: methodDetails.id,
         accountName,
         amount: order.price,
         proofImage: supabaseUrl, // ✅ URL dari Supabase
@@ -432,8 +432,8 @@ export default function PaymentMethod({ orderId, orderData, onBack }: PaymentMet
                         <div
                           key={method.id}
                           className={`border-2 rounded-lg p-4 cursor-pointer transition-all ${selectedMethod === method.id
-                              ? 'border-[#56743D] bg-[#56743D]/5'
-                              : 'border-gray-200 hover:border-[#56743D]/50'
+                            ? 'border-[#56743D] bg-[#56743D]/5'
+                            : 'border-gray-200 hover:border-[#56743D]/50'
                             }`}
                           onClick={() => setSelectedMethod(method.id)}
                         >
