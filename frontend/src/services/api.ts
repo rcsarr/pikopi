@@ -421,20 +421,7 @@ export const forumAPI = {
     });
   },
 
-  likeMessage: async (messageId: string) => {
-    return apiRequest<{
-      success: boolean;
-      message: string;
-      data: {
-        messageId: string;
-        likesCount: number;
-        isLiked: boolean;
-      };
-    }>(`/forum/messages/${messageId}/like`, {
-      method: "POST",
-      requiresAuth: true,
-    });
-  },
+
 
   deleteThread: async (threadId: string) => {
     return apiRequest<{

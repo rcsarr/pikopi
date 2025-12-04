@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify
 from app import db
-from app.models.forum import ForumThread, ForumMessage, ForumMessageLike
+from app.models.forum import ForumThread, ForumMessage
 from app.models.notification import Notification
 from app.models.user import User
 from flask_jwt_extended import jwt_required, get_jwt_identity
@@ -573,86 +573,7 @@ def delete_message(message_id):
 
 # ==================== LIKE ROUTES ====================
 
-@forum_bp.route('/messages/<message_id>/like', methods=['POST'])
-@jwt_required()
-def like_message(message_id):
-    """Like/unlike a message"""
-    try:
-        user_id = get_jwt_identity()
-        
-        # Find message
-        def find_message():
-            return ForumMessage.query.get(message_id)
-        
-        message = execute_with_retry(find_message)
-        
-        if not message:
-            return jsonify({
-                'success': False,
-                'message': 'Message not found'
-            }), 404
 
-        # Check if already liked
-        existing_like = ForumMessageLike.query.filter_by(
-            message_id=message_id,
-            user_id=user_id
-        ).first()
-
-        if existing_like:
-            # Unlike
-            def unlike():
-                db.session.delete(existing_like)
-                message.decrement_likes()
-                db.session.commit()
-            
-            execute_with_retry(unlike)
-            
-            return jsonify({
-                'success': True,
-                'message': 'Pesan berhasil di-unlike',
-                'data': {
-                    'messageId': message_id,
-                    'likesCount': message.likes_count,
-                    'isLiked': False
-                }
-            }), 200
-        else:
-            # Like
-            like = ForumMessageLike(
-                message_id=message_id,
-                user_id=user_id
-            )
-
-            def save_like():
-                db.session.add(like)
-                message.increment_likes()
-                db.session.commit()
-                return like
-            
-            execute_with_retry(save_like)
-            
-            return jsonify({
-                'success': True,
-                'message': 'Pesan berhasil di-like',
-                'data': {
-                    'messageId': message_id,
-                    'likesCount': message.likes_count,
-                    'isLiked': True
-                }
-            }), 200
-
-    except (OperationalError, DisconnectionError) as e:
-        db.session.rollback()
-        return jsonify({
-            'success': False,
-            'message': 'Database connection error. Please try again.'
-        }), 503
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({
-            'success': False,
-            'message': f'Failed to like message: {str(e)}'
-        }), 500
 
 # ==================== ADMIN ROUTES ====================
 

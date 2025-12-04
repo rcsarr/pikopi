@@ -640,7 +640,7 @@ export default function MachineControl() {
               </div>
             </CardHeader>
 
-            <div className="relative aspect-video bg-black">
+            <div className="relative bg-black max-w-[500px] max-h-[300px] mx-auto" style={{ aspectRatio: '16/9' }}>
               <canvas ref={canvasRef} className="hidden" />
 
               <video

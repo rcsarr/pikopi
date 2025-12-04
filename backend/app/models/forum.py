@@ -81,7 +81,7 @@ class ForumMessage(db.Model):
     # Relationships
     author = db.relationship('User', backref='forum_messages', lazy=True)
     parent_message = db.relationship('ForumMessage', remote_side=[id], backref='replies')
-    likes = db.relationship('ForumMessageLike', backref='message', lazy=True, cascade='all, delete-orphan')
+    parent_message = db.relationship('ForumMessage', remote_side=[id], backref='replies')
 
     def to_dict(self, include_replies=False):
         """Convert forum message object to dictionary"""
@@ -120,30 +120,5 @@ class ForumMessage(db.Model):
         return f'<ForumMessage {self.id}>'
 
 
-class ForumMessageLike(db.Model):
-    __tablename__ = 'forum_message_likes'
 
-    id = db.Column(db.BigInteger, primary_key=True, autoincrement=True)
-    message_id = db.Column(db.String(50), db.ForeignKey('forum_messages.id', ondelete='CASCADE'), nullable=False)
-    user_id = db.Column(db.String(50), db.ForeignKey('users.id', ondelete='CASCADE'), nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-
-    # Relationships
-    user = db.relationship('User', backref='forum_message_likes', lazy=True)
-
-    __table_args__ = (
-        db.UniqueConstraint('message_id', 'user_id', name='unique_message_like'),
-    )
-
-    def to_dict(self):
-        """Convert like object to dictionary"""
-        return {
-            'id': self.id,
-            'messageId': self.message_id,
-            'userId': self.user_id,
-            'createdAt': JAKARTA_TZ.localize(self.created_at).isoformat() if self.created_at else None
-        }
-
-    def __repr__(self):
-        return f'<ForumMessageLike {self.id}: msg={self.message_id}, user={self.user_id}>'
 

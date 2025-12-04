@@ -34,7 +34,6 @@ import {
   Search,
   Plus,
   Pin,
-  ThumbsUp,
   MessageCircle,
   Clock,
   Shield,
@@ -54,7 +53,7 @@ interface Message {
   authorRole: "admin" | "user"; // ✅ Use authorRole consistently
   content: string;
   createdAt: string;            // ✅ Use createdAt for raw timestamp
-  likesCount: number;           // ✅ Use likesCount consistently
+
   replies?: Message[];
 }
 
@@ -318,14 +317,12 @@ const Forum: React.FC<ForumProps> = ({ userRole, userName }) => {
           authorRole: (m.authorRole || 'user') as 'admin' | 'user',
           content: m.content || '',
           createdAt: m.createdAt || new Date().toISOString(),
-          likesCount: m.likesCount || 0,
           replies: m.replies?.map((r: any) => ({
             id: r.id,
             authorName: r.authorName || 'Unknown',
             authorRole: 'user' as const,
             content: r.content || '',
             createdAt: r.createdAt || new Date().toISOString(),
-            likesCount: 0,
           })) || [],
         }));
 
